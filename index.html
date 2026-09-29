@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador de nota</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F2F3F8;
+    --paper-2:#E7E9F1;
+    --card:#FFFFFF;
+    --ink:#15172A;
+    --ink-2:#2E3350;
+    --muted:#565D7E;
+    --muted-2:#585E7C;
+    --line:#DCDFEC;
+    --line-2:#E9EBF3;
+    --indigo:#4B45C6;
+    --indigo-soft:#E3E1FA;
+    --indigo-ink:#2A2585;
+    --cyan:#0E7C9B;
+    --green:#137A54;      /* motor: promo / aprobada */
+    --green-soft:#D6EEE2;
+    --amber:#A96C08;      /* motor: final */
+    --amber-soft:#F4E7CD;
+    --magenta:#C42B62;    /* motor: recursa */
+    --magenta-soft:#F8DAE6;
+    --r:12px;
+    --r-s:8px;
+    --shadow:0 1px 2px rgba(21,23,42,.05), 0 16px 38px -26px rgba(42,37,133,.32);
+  }
+  *{box-sizing:border-box;}
+  html{-webkit-text-size-adjust:100%;}
+  body{
+    margin:0;
+    color:var(--ink);
+    font-family:"Inter",system-ui,sans-serif;
+    line-height:1.5;
+    padding:clamp(14px,3vw,34px);
+    -webkit-font-smoothing:antialiased;
+    background:
+      radial-gradient(900px 500px at 86% -12%, rgba(75,69,198,.08), transparent 60%),
+      radial-gradient(680px 440px at -4% 106%, rgba(14,124,155,.06), transparent 58%),
+      var(--paper);
+  }
+  .wrap{max-width:1180px;margin:0 auto;}
+
+  /* ---------- Header ---------- */
+  .eyebrow{
+    font-family:"Space Mono",monospace;font-weight:400;
+    text-transform:uppercase;letter-spacing:.16em;font-size:.68rem;
+    color:var(--indigo);display:flex;align-items:center;gap:10px;margin-bottom:12px;
+  }
+  .eyebrow::before{content:"";width:20px;height:2px;background:var(--indigo);}
+  h1{
+    font-family:"Space Grotesk",system-ui,sans-serif;font-weight:700;
+    font-size:clamp(2rem,5.4vw,3.5rem);line-height:1.02;margin:0;letter-spacing:-.03em;
+  }
+  h1 .hl{color:var(--indigo);}
+  .lede{color:var(--ink-2);max-width:60ch;margin:14px 0 0;font-size:1.02rem;}
+
+  /* ---------- Escenarios ---------- */
+  .scn{display:flex;flex-wrap:wrap;gap:8px;margin:24px 0 22px;align-items:center;}
+  .scn .lbl{
+    font-family:"Space Mono",monospace;text-transform:uppercase;
+    letter-spacing:.1em;font-size:.64rem;color:var(--muted-2);margin-right:2px;
+  }
+  .chip{
+    font-family:"Inter",sans-serif;font-weight:600;font-size:.85rem;
+    background:var(--card);color:var(--ink-2);
+    border:1px solid var(--line);border-radius:8px;padding:8px 14px;cursor:pointer;
+    box-shadow:var(--shadow);transition:border-color .15s,color .15s,transform .08s;
+  }
+  .chip:hover{border-color:var(--indigo);color:var(--indigo);}
+  .chip:active{transform:translateY(1px);}
+  .chip.ghost{background:transparent;color:var(--muted);border-style:dashed;box-shadow:none;}
+  :focus-visible{outline:2px solid var(--indigo);outline-offset:2px;border-radius:5px;}
+
+  /* ---------- Layout ---------- */
+  .grid{display:grid;grid-template-columns:1fr;gap:18px;}
+  .grid > *{min-width:0;}
+  @media(min-width:940px){
+    .grid{grid-template-columns:1.15fr .85fr;align-items:start;}
+    .col-b{position:sticky;top:18px;}
+  }
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);
+  }
+  .card + .card{margin-top:16px;}
+  .card-head{padding:16px 20px 6px;display:flex;justify-content:space-between;align-items:baseline;gap:6px 10px;flex-wrap:wrap;}
+  .card-head h2{
+    font-family:"Space Grotesk",sans-serif;font-weight:600;font-size:1.1rem;margin:0;letter-spacing:-.02em;
+  }
+  .tag{
+    font-family:"Space Mono",monospace;font-size:.64rem;color:var(--indigo-ink);
+    background:var(--indigo-soft);border:1px solid #C7C3F3;
+    padding:3px 9px;border-radius:5px;white-space:normal;text-align:right;
+  }
+
+  /* ---------- Ecualizador = KPIs ---------- */
+  .eq-body{padding:10px 20px 20px;}
+  .plot{position:relative;height:236px;margin-top:26px;
+    background-image:linear-gradient(var(--line-2) 1px,transparent 1px);background-size:100% 25%;background-position:0 100%;}
+  .cols{display:flex;gap:clamp(5px,1.4vw,12px);height:100%;align-items:flex-end;position:relative;z-index:2;}
+  .col{
+    flex:1;height:100%;position:relative;cursor:ns-resize;
+    display:flex;flex-direction:column;justify-content:flex-end;
+    border-radius:6px 6px 0 0;touch-action:none;
+    background:rgba(75,69,198,.05);border:1px solid var(--line-2);border-bottom:0;
+    transition:background .15s;
+  }
+  .col:hover{background:rgba(75,69,198,.1);}
+  .fill{
+    border-radius:4px 4px 0 0;transition:height .22s cubic-bezier(.22,1,.36,1),background .18s;
+    background:var(--indigo);
+  }
+  .col.ok .fill{background:var(--green);}
+  .col.low .fill{background:var(--amber);}
+  .col.zero{border-style:dashed;border-color:#E6A9C4;background:repeating-linear-gradient(135deg,rgba(196,43,98,.06) 0 7px,transparent 7px 14px);}
+  .col.zero .fill{background:none;}
+  .val{
+    position:absolute;left:0;right:0;text-align:center;
+    font-family:"Space Mono",monospace;font-weight:400;font-size:.84rem;color:var(--ink);
+    transition:bottom .22s cubic-bezier(.22,1,.36,1);pointer-events:none;
+  }
+  .col.ok .val,.col.low .val{color:#fff;}
+  .col.zero .val{color:var(--magenta);font-size:.6rem;letter-spacing:.02em;}
+
+  /* umbral "6 = aprobada" */
+  .rule6{position:absolute;left:0;right:0;z-index:1;pointer-events:none;border-top:1px dashed var(--muted-2);opacity:.5;}
+  .rule6 span{
+    position:absolute;right:0;top:-8px;background:var(--card);padding:0 6px;
+    font-family:"Space Mono",monospace;font-size:.6rem;color:var(--muted);
+  }
+  /* línea del concepto */
+  .rule-c{position:absolute;left:0;right:0;z-index:5;pointer-events:none;
+    border-top:2px solid var(--indigo);transition:bottom .3s cubic-bezier(.22,1,.36,1);}
+  .rule-c::before,.rule-c::after{content:"";position:absolute;top:-4px;width:2px;height:8px;background:var(--indigo);}
+  .rule-c::before{left:0;} .rule-c::after{right:0;}
+  .rule-c span{
+    position:absolute;left:8px;top:-11px;
+    font-family:"Space Mono",monospace;font-weight:400;font-size:.62rem;
+    color:#fff;background:var(--indigo);padding:2px 8px;border-radius:4px;white-space:nowrap;
+  }
+  .axis{display:flex;gap:clamp(5px,1.4vw,12px);margin-top:10px;}
+  .axis .ax{
+    flex:1;text-align:center;font-family:"Space Mono",monospace;font-size:.62rem;
+    color:var(--muted-2);white-space:nowrap;
+  }
+  .axis .ax b{display:block;color:var(--ink-2);font-weight:400;}
+  .axis .ax span{display:block;color:var(--indigo);font-size:.58rem;margin-top:1px;}
+
+  /* notas exactas */
+  .steppers{
+    display:grid;gap:8px;margin-top:16px;
+    grid-template-columns:repeat(auto-fit,minmax(132px,1fr));
+  }
+  .st{
+    border:1px solid var(--line);border-radius:var(--r-s);
+    background:var(--paper);padding:8px 9px;
+  }
+  .st b{
+    display:block;font-family:"Space Mono",monospace;font-weight:400;
+    font-size:.61rem;letter-spacing:.05em;color:var(--muted);margin-bottom:5px;text-transform:uppercase;
+  }
+  .st .ctrl{display:flex;align-items:center;gap:4px;}
+  .st button{
+    flex:0 0 auto;width:26px;height:28px;cursor:pointer;
+    background:var(--card);color:var(--ink-2);
+    border:1px solid var(--line);border-radius:4px;
+    font-family:"Inter",sans-serif;font-size:1rem;line-height:1;
+    transition:.15s;
+  }
+  .st button:hover{border-color:var(--indigo);color:var(--indigo);}
+  .st input.num{
+    flex:1 1 auto;width:100%;min-width:0;height:28px;text-align:center;
+    background:var(--card);color:var(--ink);
+    border:1px solid var(--line);border-radius:4px;
+    font-family:"Space Mono",monospace;font-weight:400;font-size:.86rem;
+    font-variant-numeric:tabular-nums;
+  }
+  .st input.num:focus{border-color:var(--indigo);outline:none;}
+  .st.ok input.num{color:var(--green);}
+  .st.low input.num{color:var(--amber);}
+  .st.zero input.num{color:var(--magenta);}
+
+  .legend{
+    display:flex;flex-wrap:wrap;gap:14px;margin-top:16px;padding-top:14px;
+    border-top:1px solid var(--line-2);font-size:.76rem;color:var(--muted);
+  }
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:middle;}
+  .hint{font-size:.78rem;color:var(--muted);margin:14px 0 0;}
+
+  /* ---------- Parciales ---------- */
+  .p-body{padding:8px 20px 20px;}
+  .prow{padding:13px 0;border-top:1px solid var(--line-2);}
+  .prow:first-child{border-top:0;}
+  .ptop{display:flex;justify-content:space-between;align-items:center;gap:12px;}
+  .pname{font-weight:600;font-size:.96rem;}
+  .psub{color:var(--muted-2);font-size:.75rem;font-weight:400;}
+  .pval{font-family:"Space Mono",monospace;font-weight:400;font-size:1.26rem;font-variant-numeric:tabular-nums;}
+  .dot{
+    font-family:"Space Mono",monospace;font-size:.58rem;text-transform:uppercase;
+    letter-spacing:.03em;padding:3px 8px;border-radius:4px;white-space:nowrap;margin-left:9px;
+  }
+  .dot.ok{color:var(--green);background:var(--green-soft);}
+  .dot.no{color:var(--magenta);background:var(--magenta-soft);}
+  .slide{
+    -webkit-appearance:none;appearance:none;width:100%;height:5px;border-radius:5px;
+    background:var(--line);cursor:pointer;margin-top:12px;
+  }
+  .slide::-webkit-slider-thumb{
+    -webkit-appearance:none;appearance:none;width:19px;height:19px;border-radius:50%;
+    background:var(--indigo);border:3px solid var(--card);box-shadow:0 0 0 1px var(--indigo),0 2px 6px rgba(75,69,198,.4);cursor:pointer;
+  }
+  .slide::-moz-range-thumb{
+    width:19px;height:19px;border-radius:50%;background:var(--indigo);
+    border:3px solid var(--card);box-shadow:0 0 0 1px var(--indigo);cursor:pointer;
+  }
+  .recup{
+    margin-top:11px;padding:11px 13px;border-radius:var(--r-s);
+    background:var(--amber-soft);border:1px solid #E2C795;
+    font-size:.82rem;color:#734700;
+  }
+  .recup b{color:#573600;}
+  .mini{
+    font-family:"Inter",sans-serif;font-size:.75rem;font-weight:600;
+    background:var(--card);color:var(--ink-2);border:1px solid var(--line);
+    border-radius:5px;padding:6px 11px;cursor:pointer;transition:.15s;
+  }
+  .mini:hover{border-color:var(--indigo);color:var(--indigo);}
+  .mini.on{background:var(--indigo);border-color:var(--indigo);color:#fff;}
+  .rline{display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap;}
+  .rline .slide{margin-top:0;max-width:170px;}
+
+  /* ---------- Destino ---------- */
+  .destino{background:linear-gradient(180deg,#FCFCFF,var(--card));}
+  .locks{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:18px 20px 4px;}
+  .lock{border:1px solid var(--line);border-radius:var(--r-s);padding:12px 13px;background:var(--paper);transition:.2s;}
+  .lock .lt{display:flex;align-items:center;gap:7px;margin-bottom:4px;}
+  .lock .t{font-family:"Space Grotesk",sans-serif;font-weight:600;font-size:.8rem;letter-spacing:-.01em;}
+  .lock .v{font-family:"Space Mono",monospace;font-size:.68rem;color:var(--muted);}
+  .lock.open{border-color:#9FD8BE;background:var(--green-soft);}
+  .lock.open .t{color:#0C6544;}
+  .lock.shut{border-color:#E6A9C4;background:var(--magenta-soft);}
+  .lock.shut .t{color:var(--magenta);}
+
+  .score{padding:18px 20px 4px;text-align:center;}
+  .score .k{
+    font-family:"Space Mono",monospace;text-transform:uppercase;letter-spacing:.14em;
+    font-size:.64rem;color:var(--muted);
+  }
+  .score .n{
+    font-family:"Space Grotesk",sans-serif;font-weight:700;
+    font-size:clamp(3.2rem,10vw,4.6rem);line-height:1.02;margin:4px 0 0;
+    letter-spacing:-.03em;transition:color .3s;font-variant-numeric:tabular-nums;
+  }
+  .score .rnd{
+    font-family:"Space Mono",monospace;font-weight:400;font-size:.76rem;
+    text-transform:uppercase;letter-spacing:.04em;min-height:1.2em;
+  }
+  .score .rnd .a{color:var(--muted-2);}
+  .score .f{font-family:"Space Mono",monospace;font-size:.68rem;color:var(--muted-2);margin-top:4px;}
+
+  .track{padding:12px 20px 2px;}
+  .rail{position:relative;height:44px;border-radius:8px;display:flex;overflow:hidden;border:1px solid var(--line);}
+  .z{display:flex;align-items:center;justify-content:center;position:relative;
+    font-family:"Space Grotesk",sans-serif;font-weight:600;font-size:.72rem;color:var(--muted);letter-spacing:-.01em;}
+  .z.zr{background:var(--magenta-soft);}
+  .z.zf{background:var(--amber-soft);border-left:1px solid var(--line);border-right:1px solid var(--line);}
+  .z.zp{background:var(--green-soft);}
+  .z small{position:absolute;bottom:3px;font-family:"Space Mono",monospace;font-size:.56rem;color:var(--muted-2);}
+  .mk{position:absolute;top:-5px;bottom:-5px;width:3px;background:var(--ink);border-radius:3px;
+    box-shadow:0 0 0 2px var(--card);z-index:4;transition:left .4s cubic-bezier(.22,1,.36,1);}
+  .mk::after{content:"";position:absolute;top:-7px;left:50%;transform:translateX(-50%);
+    border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid var(--ink);}
+  .mk.off{opacity:.14;}
+
+  .verd{margin:16px 20px 0;padding:15px 16px;border-radius:var(--r-s);display:flex;gap:13px;align-items:center;transition:.3s;}
+  .verd .em{font-size:2rem;line-height:1;}
+  .verd .h{font-family:"Space Grotesk",sans-serif;font-weight:700;font-size:1.26rem;letter-spacing:-.02em;line-height:1.05;}
+  .verd .p{font-size:.86rem;color:var(--ink-2);margin-top:3px;}
+  .verd.vp{background:var(--green-soft);border:1px solid #9FD8BE;}
+  .verd.vp .h{color:#0C6544;}
+  .verd.vf{background:var(--amber-soft);border:1px solid #E2C795;}
+  .verd.vf .h{color:#8A5500;}
+  .verd.vr{background:var(--magenta-soft);border:1px solid #E6A9C4;}
+  .verd.vr .h{color:var(--magenta);}
+
+  .why{margin:13px 20px 18px;padding:13px 15px;border-radius:var(--r-s);
+    background:var(--paper-2);border:1px solid var(--line-2);font-size:.87rem;color:var(--ink-2);}
+  .why b{color:var(--ink);font-weight:600;}
+  .why .k{font-family:"Space Mono",monospace;color:var(--indigo-ink);font-weight:400;}
+
+  .stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--line-2);
+    border-top:1px solid var(--line);border-radius:0 0 var(--r) var(--r);overflow:hidden;}
+  .stat{background:var(--card);padding:12px 14px;}
+  .stat .l{font-family:"Space Mono",monospace;font-size:.57rem;color:var(--muted-2);
+    text-transform:uppercase;letter-spacing:.05em;}
+  .stat .n{font-family:"Space Mono",monospace;font-weight:400;font-size:1.06rem;margin-top:2px;color:var(--ink);font-variant-numeric:tabular-nums;}
+
+  footer{margin-top:26px;color:var(--muted);font-size:.76rem;text-align:center;line-height:1.6;}
+  footer .m{font-family:"Space Mono",monospace;color:var(--ink-2);}
+
+  @media(prefers-reduced-motion:reduce){*{transition:none!important;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow" id="eyebrow">Criterios de evaluación</div>
+    <h1>Simulador de <span class="hl">nota</span></h1>
+    <p class="lede">Movés tus notas y el tablero te dice, en vivo, si <b>promocionás</b>, rendís <b>final</b> o <b>recursás</b>. Arrancá con un escenario y descubrí qué regla decide tu destino.</p>
+  </header>
+
+  <div class="scn" role="group" aria-label="Escenarios de ejemplo">
+    <span class="lbl">Probá un escenario</span>
+    <button class="chip" data-s="full">Todo al día</button>
+    <button class="chip" data-s="faltas">Falté a 2 cuestionarios</button>
+    <button class="chip" data-s="borde">Al borde de promocionar</button>
+    <button class="chip" data-s="parcial">Desaprobé un parcial</button>
+    <button class="chip ghost" data-s="cero">Empezar de cero</button>
+  </div>
+
+  <div class="grid">
+    <div class="col-a">
+      <section class="card">
+        <div class="card-head">
+          <h2>Actividades obligatorias</h2>
+          <span class="tag" id="tag-oblig">promedio simple · nota de concepto</span>
+        </div>
+        <div class="eq-body">
+          <div class="plot">
+            <div class="rule6" id="rule6"><span>6 = aprobada</span></div>
+            <div class="rule-c" id="ruleC"><span id="ruleC-lbl">CONCEPTO 0,00</span></div>
+            <div class="cols" id="cols"></div>
+          </div>
+          <div class="axis" id="axis"></div>
+          <div class="steppers" id="steppers"></div>
+          <div class="legend">
+            <span><i style="background:var(--cyan)"></i>Aprobada (6+)</span>
+            <span><i style="background:var(--amber)"></i>Hecha pero desaprobada</span>
+            <span><i style="background:var(--magenta)"></i>Sin hacer (vale 0)</span>
+          </div>
+          <p class="hint">Arrastrá cada columna (salta de a medio punto) o escribí la <b>nota exacta</b> abajo con − / + o tecleándola. En <b>0</b> queda como <b>sin hacer</b>.</p>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>Parciales</h2>
+          <span class="tag" id="tag-parc">se promedian entre sí</span>
+        </div>
+        <div class="p-body" id="parc"></div>
+      </section>
+    </div>
+
+    <div class="col-b">
+      <section class="card destino">
+        <div class="locks">
+          <div class="lock" id="lk-reg">
+            <div class="lt"><span id="lk-reg-i">🔒</span><span class="t">Regularidad</span></div>
+            <div class="v" id="lk-reg-v">0 / 8 · meta 6</div>
+          </div>
+          <div class="lock" id="lk-par">
+            <div class="lt"><span id="lk-par-i">🔒</span><span class="t">Parciales</span></div>
+            <div class="v" id="lk-par-v">todos ≥ 6</div>
+          </div>
+        </div>
+
+        <div class="score">
+          <div class="k">Nota de cierre</div>
+          <div class="n" id="score">—</div>
+          <div class="rnd" id="round"></div>
+          <div class="f" id="formula">prom(parciales) + concepto ÷ 2</div>
+        </div>
+
+        <div class="track">
+          <div class="rail" aria-hidden="true" id="rail">
+            <div class="z zr" id="z-r">Recursa<small id="z-r-s"></small></div>
+            <div class="z zf" id="z-f">Final<small id="z-f-s"></small></div>
+            <div class="z zp" id="z-p">Promo<small id="z-p-s"></small></div>
+            <div class="mk off" id="mk" style="left:0%"></div>
+          </div>
+        </div>
+
+        <div class="verd vr" id="verd" role="status" aria-live="polite">
+          <span class="em" id="verd-em">🎮</span>
+          <div>
+            <div class="h" id="verd-h">Armá tu cursada</div>
+            <div class="p" id="verd-p">Movés las notas y el tablero responde.</div>
+          </div>
+        </div>
+
+        <div class="why" id="why" aria-live="polite"></div>
+
+        <div class="stats">
+          <div class="stat"><div class="l">Concepto</div><div class="n" id="s-con">—</div></div>
+          <div class="stat"><div class="l">Prom. parciales</div><div class="n" id="s-par">—</div></div>
+          <div class="stat"><div class="l">Aprobadas</div><div class="n" id="s-apr">0/8</div></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    <span class="m" id="foot-f">Nota de cierre = [ promedio(parciales) + nota de concepto ] ÷ 2</span><br>
+    Las notas no se redondean una por una: el único redondeo es sobre la nota de cierre. Las actividades sin hacer valen 0.<br>
+    Herramienta de práctica; ante dudas valen los criterios de evaluación de la cátedra.
+  </footer>
+</div>
+
+<script>
+/* =====================================================================
+   BLOQUE DE REGLAS — es lo único que se edita para clonar a otra materia.
+   El motor de abajo no se toca.
+   ===================================================================== */
+var MATERIA = {
+  nombre: "Métricas del Mundo Digital",
+
+  // Actividades obligatorias. Agregá o sacá grupos libremente.
+  // peso: opcional. Si NINGÚN grupo lo tiene, el concepto es el promedio
+  // simple de todas juntas. Si TODOS lo tienen, se pondera por grupo.
+  // w: ancho relativo de la columna en el ecualizador (opcional, default 1).
+  // agg: "max" toma la nota más alta del grupo; por defecto promedia.
+  grupos: [
+    { id:"cuest", label:"Cuestionarios", corto:"C", n:8 }
+  ],
+
+  regularidad: { minAprobadas:6, notaMinima:6 },   // 6 de 8
+  parciales:   { n:2, notaMinima:6, recuperatorio:true },
+  umbrales:    { promo:8, final:6 },               // promo 8+ · final 6-7 · recursa 5-
+  paso:        0.5                                 // salto al arrastrar; el campo admite cualquier decimal
+};
+/* =================== FIN DEL BLOQUE DE REGLAS ======================== */
+
+(function(){
+  "use strict";
+  var $=function(id){return document.getElementById(id);};
+  var M=MATERIA;
+  var TOTAL=M.grupos.reduce(function(a,g){return a+g.n;},0);
+
+  function fmt(n){ return n.toFixed(2).replace(".",","); }
+  function redondear(n){ return Math.round(n); }   // único redondeo, al final
+  function aprob(g){ return g>=M.regularidad.notaMinima; }
+
+  // ---------- Estado ----------
+  var state={ g:{}, parc:[] };
+  function initState(vals){
+    M.grupos.forEach(function(g){
+      state.g[g.id]=[];
+      for(var i=0;i<g.n;i++){ state.g[g.id].push(vals?vals.g[g.id][i]:7); }
+    });
+    state.parc=[];
+    for(var j=0;j<M.parciales.n;j++){
+      state.parc.push(vals?{base:vals.parc[j].base,recup:vals.parc[j].recup}:{base:7,recup:null});
+    }
+  }
+
+  var ESC={
+    full:    {g:{cuest:[9,8,9,10,8,9,9,8]}, parc:[{base:9,recup:null},{base:8,recup:null}]},
+    faltas:  {g:{cuest:[8,8,8,8,8,8,0,0]},  parc:[{base:8,recup:null},{base:8,recup:null}]},
+    borde:   {g:{cuest:[7,7,7,7,7,7,7,8]},  parc:[{base:8,recup:null},{base:8,recup:null}]},
+    parcial: {g:{cuest:[8,8,9,8,9,8,8,9]},  parc:[{base:8,recup:null},{base:4,recup:null}]},
+    cero:    {g:{cuest:[0,0,0,0,0,0,0,0]},  parc:[{base:0,recup:null},{base:0,recup:null}]}
+  };
+
+  // ---------- Cálculo ----------
+  function todas(){
+    var out=[];
+    M.grupos.forEach(function(g){ out=out.concat(state.g[g.id]); });
+    return out;
+  }
+  function promedio(a){ return a.length? a.reduce(function(x,y){return x+y;},0)/a.length : 0; }
+  // Agregación de un grupo: "max" toma la nota más alta; por defecto, el promedio.
+  function agregar(g){
+    var vals=state.g[g.id];
+    if(g.agg==="max"){ return vals.length? Math.max.apply(null,vals) : 0; }
+    return promedio(vals);
+  }
+
+  function concepto(){
+    var conPeso=M.grupos.every(function(g){ return typeof g.peso==="number"; });
+    if(conPeso){
+      return M.grupos.reduce(function(a,g){ return a + agregar(g)*g.peso; },0);
+    }
+    return promedio(todas());   // promedio simple de todas las obligatorias
+  }
+
+  function compute(){
+    var all=todas();
+    var apr=all.filter(aprob).length;
+    var regular = apr>=M.regularidad.minAprobadas;
+    var con=concepto();
+
+    var efec=state.parc.map(function(p){ return (p.recup!=null)?p.recup:p.base; });
+    var parcOk=efec.every(function(v){ return v>=M.parciales.notaMinima; });
+    var promP=promedio(efec);
+
+    var cierre=(promP+con)/2;
+    var cierreR=redondear(cierre);
+
+    var destino,reason;
+    if(!regular){ destino="rec"; reason="reg"; }
+    else if(!parcOk){ destino="rec"; reason="parc"; }
+    else if(cierreR>=M.umbrales.promo){ destino="pro"; reason="pro"; }
+    else if(cierreR>=M.umbrales.final){ destino="fin"; reason="fin"; }
+    else { destino="rec"; reason="nota"; }
+
+    return {all:all,apr:apr,regular:regular,concepto:con,efec:efec,parcOk:parcOk,
+            promP:promP,cierre:cierre,cierreR:cierreR,destino:destino,reason:reason};
+  }
+
+  // ---------- Ecualizador ----------
+  var META=[];   // {gid, i, corto, label, w}
+  M.grupos.forEach(function(g){
+    for(var i=0;i<g.n;i++){
+      META.push({
+        gid:g.id, i:i,
+        corto: g.n===1 ? g.corto : g.corto+(i+1),   // "TP" si es único; "F1","C3" si hay varios
+        label: g.n===1 ? g.label : g.label+" "+(i+1),
+        w: (typeof g.w==="number"?g.w:1),            // ancho relativo de la columna (opcional)
+        peso: g.peso,                                 // para mostrar la ponderación del grupo
+        agg: g.agg                                    // "max" o promedio (default)
+      });
+    }
+  });
+
+  function buildCols(){
+    var cols=$("cols"), axis=$("axis");
+    cols.innerHTML=""; axis.innerHTML="";
+    META.forEach(function(m,idx){
+      var c=document.createElement("div");
+      c.className="col"; c.tabIndex=0; c.style.flex=m.w;
+      c.setAttribute("role","slider");
+      c.setAttribute("aria-valuemin","0");
+      c.setAttribute("aria-valuemax","10");
+      c.setAttribute("aria-label",m.label);
+      c.innerHTML='<span class="val"></span><div class="fill"></div>';
+      c.dataset.idx=idx;
+      cols.appendChild(c);
+
+      var a=document.createElement("div");
+      a.className="ax"; a.style.flex=m.w;
+      a.innerHTML='<b>'+m.corto+'</b>'+(typeof m.peso==="number" && m.i===0 ? '<span>'+Math.round(m.peso*100)+'%'+(m.agg==="max"?' · máx':'')+'</span>' : '');
+      axis.appendChild(a);
+    });
+  }
+
+  // Paso al arrastrar / con el teclado. El campo numérico admite cualquier decimal.
+  function paso(){ return (typeof M.paso==="number" && M.paso>0) ? M.paso : 0.5; }
+  function limitar(v){ return Math.max(0,Math.min(10,v)); }
+  function ajustar(v){ var s=paso(); return limitar(Math.round(v/s)*s); }
+  // Nota de una actividad: entera sin decimales, con decimales sólo si los tiene.
+  function nota(v){
+    var n=Math.round(v*100)/100;
+    return (n===Math.round(n)) ? String(n) : String(n).replace(".",",");
+  }
+
+  function setVal(idx,v,exacto){
+    v = exacto ? limitar(Math.round(v*100)/100) : ajustar(v);
+    var m=META[idx];
+    state.g[m.gid][m.i]=v;
+    render();
+  }
+
+  function valFromY(col,clientY){
+    var r=col.getBoundingClientRect();
+    var pct=1-((clientY-r.top)/r.height);
+    return pct*10;
+  }
+
+  function wireCols(){
+    var dragging=null;
+    $("cols").addEventListener("pointerdown",function(e){
+      var col=e.target.closest(".col"); if(!col) return;
+      dragging=col; col.setPointerCapture(e.pointerId);
+      setVal(+col.dataset.idx, valFromY(col,e.clientY));
+      e.preventDefault();
+    });
+    $("cols").addEventListener("pointermove",function(e){
+      if(!dragging) return;
+      setVal(+dragging.dataset.idx, valFromY(dragging,e.clientY));
+    });
+    var stop=function(){ dragging=null; };
+    $("cols").addEventListener("pointerup",stop);
+    $("cols").addEventListener("pointercancel",stop);
+
+    $("cols").addEventListener("keydown",function(e){
+      var col=e.target.closest(".col"); if(!col) return;
+      var idx=+col.dataset.idx, m=META[idx], v=state.g[m.gid][m.i], nv=null, s=paso();
+      if(e.key==="ArrowUp"||e.key==="ArrowRight") nv=v+s;
+      else if(e.key==="ArrowDown"||e.key==="ArrowLeft") nv=v-s;
+      else if(e.key==="Home") nv=0;
+      else if(e.key==="End") nv=10;
+      if(nv!==null){ e.preventDefault(); setVal(idx,nv); $("cols").children[idx].focus(); }
+    });
+  }
+
+  // ---------- Notas exactas (− / campo / +) ----------
+  // Se construyen una vez y se actualizan en el lugar, para no perder el foco
+  // mientras se tipea una nota.
+  var STEP=[];
+  function buildSteppers(){
+    var box=$("steppers"); box.innerHTML=""; STEP=[];
+    META.forEach(function(m,idx){
+      var el=document.createElement("div");
+      el.className="st";
+      el.innerHTML='<b>'+m.corto+'</b>'+
+        '<div class="ctrl">'+
+          '<button type="button" class="mns" aria-label="Bajar nota de '+m.label+'">−</button>'+
+          '<input type="text" inputmode="decimal" class="num" aria-label="Nota de '+m.label+'">'+
+          '<button type="button" class="pls" aria-label="Subir nota de '+m.label+'">+</button>'+
+        '</div>';
+      box.appendChild(el);
+      var inp=el.querySelector(".num");
+      STEP.push({inp:inp, el:el});
+
+      el.querySelector(".mns").addEventListener("click",function(){
+        setVal(idx, state.g[m.gid][m.i]-paso());
+      });
+      el.querySelector(".pls").addEventListener("click",function(){
+        setVal(idx, state.g[m.gid][m.i]+paso());
+      });
+      inp.addEventListener("input",function(){
+        var t=inp.value.replace(",",".").trim();
+        if(t==="") return;                       // deja escribir sin saltar
+        var n=parseFloat(t);
+        if(isNaN(n)) return;
+        setVal(idx, n, true);
+      });
+      inp.addEventListener("blur",function(){
+        inp.value=nota(state.g[m.gid][m.i]);     // normaliza al salir
+      });
+    });
+  }
+  function updateSteppers(){
+    META.forEach(function(m,idx){
+      var s=STEP[idx], v=state.g[m.gid][m.i];
+      if(document.activeElement!==s.inp){ s.inp.value=nota(v); }
+      s.el.className="st "+(v===0?"zero":(aprob(v)?"ok":"low"));
+    });
+  }
+
+  // ---------- Parciales ----------
+  // Se construyen UNA sola vez; después se actualizan en el lugar. Si se
+  // reconstruyeran en cada render, arrastrar un slider lo rompería a mitad.
+  var PROW=[];
+  function buildParc(){
+    var box=$("parc"); box.innerHTML=""; PROW=[];
+    state.parc.forEach(function(p,i){
+      var row=document.createElement("div");
+      row.className="prow";
+      var sub = M.parciales.n===1 ? "único parcial" : (i===0?"a mitad de cuatrimestre":"al final de la cursada");
+      row.innerHTML=
+        '<div class="ptop"><div><div class="pname">Parcial '+(i+1)+'</div><div class="psub">'+sub+'</div></div>'+
+        '<div><span class="pval"></span><span class="dot"></span></div></div>'+
+        '<input type="range" class="slide base" min="0" max="10" step="1" aria-label="Nota del parcial '+(i+1)+'">'+
+        '<div class="recup" hidden>⚡ <b>Tenés recuperatorio.</b> La nota del recuperatorio reemplaza a la original.'+
+          '<div class="rline take"><button class="mini on" type="button">Rendir recuperatorio</button></div>'+
+          '<div class="rline has" hidden><span class="pval rv"></span>'+
+            '<input type="range" class="slide rec" min="0" max="10" step="1" aria-label="Nota del recuperatorio del parcial '+(i+1)+'">'+
+            '<button class="mini drop" type="button">Quitar</button></div>'+
+        '</div>';
+      box.appendChild(row);
+
+      var el={row:row,
+        val:row.querySelector(".ptop .pval"), dot:row.querySelector(".ptop .dot"),
+        base:row.querySelector(".slide.base"), recup:row.querySelector(".recup"),
+        take:row.querySelector(".rline.take"), has:row.querySelector(".rline.has"),
+        rv:row.querySelector(".pval.rv"), rec:row.querySelector(".slide.rec")};
+      PROW.push(el);
+
+      el.base.addEventListener("input",function(){ state.parc[i].base=+el.base.value; render(); });
+      el.rec.addEventListener("input",function(){ state.parc[i].recup=+el.rec.value; render(); });
+      el.take.querySelector("button").addEventListener("click",function(){ state.parc[i].recup=M.parciales.notaMinima; render(); });
+      row.querySelector(".mini.drop").addEventListener("click",function(){ state.parc[i].recup=null; render(); });
+    });
+  }
+
+  function updateParc(){
+    state.parc.forEach(function(p,i){
+      var el=PROW[i];
+      if(el.base.value!=p.base) el.base.value=p.base;
+      el.val.textContent = p.base===0?"–":p.base;
+      var ok = p.base>=M.parciales.notaMinima;
+      el.dot.className="dot "+(ok?"ok":"no");
+      el.dot.textContent = ok?"aprobado":(p.base===0?"no se presentó":"desaprobado");
+
+      var mostrar = M.parciales.recuperatorio && !ok;
+      el.recup.hidden = !mostrar;
+      if(mostrar){
+        var tiene = p.recup!=null;
+        el.take.hidden = tiene;
+        el.has.hidden = !tiene;
+        if(tiene){
+          if(el.rec.value!=p.recup) el.rec.value=p.recup;
+          el.rv.textContent=p.recup;
+        }
+      }
+    });
+  }
+
+  // ---------- Render ----------
+  function render(){
+    var r=compute();
+
+    // columnas
+    var cols=$("cols").children;
+    META.forEach(function(m,idx){
+      var v=state.g[m.gid][m.i], col=cols[idx];
+      col.className="col "+(v===0?"zero":(aprob(v)?"ok":"low"));
+      col.setAttribute("aria-valuenow",v);
+      col.setAttribute("aria-valuetext",v===0?"sin hacer":nota(v));
+      col.querySelector(".fill").style.height=(v*10)+"%";
+      var lab=col.querySelector(".val");
+      lab.textContent = v===0?"SIN HACER":nota(v);
+      lab.style.bottom = v===0 ? "6px" : "calc("+(v*10)+"% + 6px)";
+    });
+    updateSteppers();
+
+    // líneas
+    $("rule6").style.bottom=(M.regularidad.notaMinima*10)+"%";
+    $("ruleC").style.bottom=(r.concepto*10)+"%";
+    $("ruleC-lbl").textContent="CONCEPTO "+fmt(r.concepto);
+
+    updateParc();
+
+    // candados
+    var lr=$("lk-reg");
+    lr.className="lock "+(r.regular?"open":"shut");
+    $("lk-reg-i").textContent=r.regular?"🔓":"🔒";
+    $("lk-reg-v").textContent=r.apr+" / "+TOTAL+" · meta "+M.regularidad.minAprobadas;
+
+    var lp=$("lk-par");
+    lp.className="lock "+(r.parcOk?"open":"shut");
+    $("lk-par-i").textContent=r.parcOk?"🔓":"🔒";
+    $("lk-par-v").textContent=r.efec.map(function(v,i){return "P"+(i+1)+" "+(v===0?"–":v);}).join(" · ");
+
+    // score
+    var open=r.regular&&r.parcOk;
+    var col = r.destino==="pro"?"var(--green)":r.destino==="fin"?"var(--amber)":"var(--magenta)";
+    var sc=$("score");
+    sc.textContent = open? fmt(r.cierre) : "—";
+    sc.style.color = col;
+    var rd=$("round");
+    if(open){ rd.innerHTML='<span class="a">redondea a</span> '+r.cierreR; rd.style.color=col; }
+    else rd.textContent="";
+    $("formula").textContent = open
+      ? "prom(parc "+fmt(r.promP)+") + concepto "+fmt(r.concepto)+" ÷ 2"
+      : "bloqueada por un candado cerrado";
+
+    // marcador
+    var mk=$("mk");
+    if(open){ mk.classList.remove("off"); mk.style.left=Math.max(0,Math.min(100,r.cierre*10))+"%"; }
+    else mk.classList.add("off");
+
+    // veredicto
+    var v=$("verd");
+    if(r.destino==="pro"){
+      v.className="verd vp"; $("verd-em").textContent="😎"; $("verd-h").textContent="Promociona";
+      $("verd-p").textContent="Sin examen final. ¡Cerraste la materia!";
+    } else if(r.destino==="fin"){
+      v.className="verd vf"; $("verd-em").textContent="😅"; $("verd-h").textContent="Rinde final";
+      $("verd-p").textContent="Quedás regular: tenés que rendir el examen final (se aprueba con 6 o más).";
+    } else {
+      v.className="verd vr"; $("verd-em").textContent="😵"; $("verd-h").textContent="Recursa";
+      $("verd-p").textContent="Tenés que volver a cursar la materia.";
+    }
+
+    // por qué
+    var w="";
+    var sinHacer=r.all.filter(function(g){return g===0;}).length;
+    if(r.reason==="reg"){
+      w='<b>Te frena la regularidad.</b> Aprobaste <span class="k">'+r.apr+' de '+TOTAL+'</span> obligatorias y hacen falta <span class="k">'+M.regularidad.minAprobadas+'</span>. '+
+        'Sin regularidad <b>recursás aunque tengas los parciales aprobados</b>.';
+    } else if(r.reason==="parc"){
+      w='<b>Te frena un parcial.</b> Hay que aprobar todos los parciales (o su recuperatorio). '+
+        'Con menos de 6 tenés <b>recuperatorio</b>, y esa nota reemplaza a la original — probá activarlo.';
+    } else if(r.reason==="nota"){
+      w='Tenés regularidad y parciales, pero la nota de cierre es <span class="k">'+fmt(r.cierre)+'</span> → redondea a <span class="k">'+r.cierreR+'</span>. Con 5 o menos, se recursa.';
+    } else if(r.reason==="fin"){
+      w='Tu nota de cierre es <span class="k">'+fmt(r.cierre)+'</span> → redondea a <span class="k">'+r.cierreR+'</span>: rendís final. '+
+        'El redondeo va recién al final, así que desde <span class="k">'+fmt(M.umbrales.promo-0.5)+'</span> ya promocionás.'+
+        (sinHacer>0?' Tenés <b>'+sinHacer+'</b> actividad'+(sinHacer>1?'es':'')+' sin hacer valiendo 0: mirá cuánto sube la línea del concepto si las hacés.':'');
+    } else if(r.reason==="pro"){
+      w='¡Todo en orden! Regularidad ✓, parciales ✓ y nota de cierre <span class="k">'+fmt(r.cierre)+'</span> → redondea a <span class="k">'+r.cierreR+'</span>. Promoción directa.';
+    }
+    $("why").innerHTML=w;
+
+    // stats
+    $("s-con").textContent=fmt(r.concepto);
+    $("s-par").textContent=fmt(r.promP);
+    $("s-apr").textContent=r.apr+"/"+TOTAL;
+  }
+
+  // ---------- Arranque ----------
+  function pintarZonas(){
+    var b1=(M.umbrales.final-0.5)*10, b2=(M.umbrales.promo-0.5)*10;
+    $("z-r").style.flex=b1; $("z-f").style.flex=(b2-b1); $("z-p").style.flex=(100-b2);
+    $("z-r-s").textContent="≤ "+(M.umbrales.final-1);
+    $("z-f-s").textContent=M.umbrales.final+" – "+(M.umbrales.promo-1);
+    $("z-p-s").textContent=M.umbrales.promo+" +";
+  }
+  function textos(){
+    $("eyebrow").textContent=M.nombre;
+    document.title="Simulador de nota · "+M.nombre;
+    $("tag-oblig").textContent=M.grupos.map(function(g){return g.n+" "+g.label.toLowerCase();}).join(" + ")+" · "+TOTAL+" en total";
+    $("tag-parc").textContent=M.parciales.n===1?"1 parcial":M.parciales.n+" parciales · se promedian";
+    $("lk-reg-v").textContent="0 / "+TOTAL+" · meta "+M.regularidad.minAprobadas;
+  }
+
+  document.querySelectorAll("[data-s]").forEach(function(b){
+    b.addEventListener("click",function(){
+      initState(ESC[b.getAttribute("data-s")]);
+      render();   // las columnas y los parciales ya existen: solo se actualizan
+    });
+  });
+
+  textos(); pintarZonas(); initState(); buildCols(); wireCols(); buildSteppers(); buildParc(); render();
+})();
+</script>
+</body>
+</html>
